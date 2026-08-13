@@ -2,7 +2,7 @@
 
 // views/campos/ui/cows-panel.tsx
 import { useMemo, useState } from "react";
-import { composeCows, type Cow } from "@/entities/cow";
+import { composeCows, CowDetail, type Cow } from "@/entities/cow";
 import type { Herd } from "@/entities/herd";
 import { Button, Card } from "@/shared/ui";
 import { FilterIcon, SearchIcon } from "./icons";
@@ -14,15 +14,26 @@ interface Props {
   isLoadingCows: boolean;
   onAddCowAction: () => void;
   onBackToHerdsAction: () => void;
+  onEditCowAction?: (cow: Cow) => void;
+  onDeleteCowAction?: (cow: Cow) => void;
+  isDeletingCow?: boolean;
 }
 
 type CategoryFilter = "todos" | "vacas" | "terneros" | "toros";
+type SortOrder = "none" | "caravana-asc";
 
 const CATEGORY_BAR_COLOR: Record<Exclude<CategoryFilter, "todos">, string> = {
   vacas: "bg-rufo-primary",
   terneros: "bg-rufo-light-green",
   toros: "bg-rufo-accent",
 };
+
+function caravanaNumber(cow: Cow): number {
+  const tag = cow.visualTag || cow.rfidTag || "";
+  const match = tag.match(/\d+/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return Number(match[0]);
+}
 
 function categoryGroup(cow: Cow): Exclude<CategoryFilter, "todos"> {
   if (cow.category === "Ternero" || cow.category === "Ternera") return "terneros";
@@ -44,24 +55,41 @@ function formatAge(birthDate: string | null): string | null {
 }
 
 // rodeo seleccionado: lista de vacas de ese rodeo (paso 3 de campo -> rodeo -> vacas)
-export function CowsPanel({ farmName, herd, cows, isLoadingCows, onAddCowAction, onBackToHerdsAction }: Props) {
+export function CowsPanel({
+  farmName,
+  herd,
+  cows,
+  isLoadingCows,
+  onAddCowAction,
+  onBackToHerdsAction,
+  onEditCowAction,
+  onDeleteCowAction,
+  isDeletingCow,
+}: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("todos");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
 
   const composition = composeCows(cows);
 
   const filteredCows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return cows.filter((cow) => {
+    const result = cows.filter((cow) => {
       if (category !== "todos" && categoryGroup(cow) !== category) return false;
       if (!query) return true;
       const tag = (cow.visualTag || cow.rfidTag || "").toLowerCase();
       return tag.includes(query);
     });
-  }, [cows, search, category]);
+    if (sortOrder === "caravana-asc") {
+      result.sort((a, b) => caravanaNumber(a) - caravanaNumber(b));
+    }
+    return result;
+  }, [cows, search, category, sortOrder]);
 
-  const activeFilterCount = (search.trim() ? 1 : 0) + (category !== "todos" ? 1 : 0);
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) + (category !== "todos" ? 1 : 0) + (sortOrder !== "none" ? 1 : 0);
 
   return (
     <>
@@ -137,6 +165,17 @@ export function CowsPanel({ farmName, herd, cows, isLoadingCows, onAddCowAction,
                   {tab.label} {tab.count}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setSortOrder((value) => (value === "caravana-asc" ? "none" : "caravana-asc"))}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  sortOrder === "caravana-asc"
+                    ? "bg-rufo-primary text-white"
+                    : "border border-rufo-border bg-rufo-surface text-rufo-text hover:bg-rufo-divider/60"
+                }`}
+              >
+                Caravana ↑
+              </button>
             </div>
           )}
         </div>
@@ -156,7 +195,12 @@ export function CowsPanel({ farmName, herd, cows, isLoadingCows, onAddCowAction,
                 const noTag = !tag;
                 const age = formatAge(cow.birthDate);
                 return (
-                  <div key={cow.id} className="flex gap-2.5 rounded-md bg-rufo-surface p-3 shadow-sm">
+                  <button
+                    key={cow.id}
+                    type="button"
+                    onClick={() => setSelectedCow(cow)}
+                    className="flex gap-2.5 rounded-md bg-rufo-surface p-3 text-left shadow-sm transition-colors hover:bg-rufo-divider/60"
+                  >
                     <span
                       className={`w-1 shrink-0 self-stretch rounded-sm ${
                         noTag ? "bg-rufo-border-device" : CATEGORY_BAR_COLOR[categoryGroup(cow)]
@@ -170,10 +214,11 @@ export function CowsPanel({ farmName, herd, cows, isLoadingCows, onAddCowAction,
                       </span>
                       <span className={`truncate text-xs ${noTag ? "text-rufo-icon-muted" : "text-rufo-text-muted"}`}>
                         {cow.category}
+                        {cow.coatColor ? ` · ${cow.coatColor}` : ""}
                         {age ? ` · ${age}` : ""}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -226,11 +271,18 @@ export function CowsPanel({ farmName, herd, cows, isLoadingCows, onAddCowAction,
                 </thead>
                 <tbody>
                   {cows.map((cow) => (
-                    <tr key={cow.id} className="border-b border-rufo-border last:border-0">
+                    <tr
+                      key={cow.id}
+                      onClick={() => setSelectedCow(cow)}
+                      className="cursor-pointer border-b border-rufo-border transition-colors last:border-0 hover:bg-rufo-divider/60"
+                    >
                       <td className="py-2.5 pr-4 text-sm font-medium text-rufo-text">
                         {cow.visualTag || cow.rfidTag || `#${cow.id}`}
                       </td>
-                      <td className="py-2.5 pr-4 text-sm text-rufo-text-muted">{cow.category}</td>
+                      <td className="py-2.5 pr-4 text-sm text-rufo-text-muted">
+                        {cow.category}
+                        {cow.coatColor ? ` · ${cow.coatColor}` : ""}
+                      </td>
                       <td className="py-2.5 pr-4 text-sm text-rufo-text-muted">{cow.sex === "F" ? "Hembra" : "Macho"}</td>
                       <td className="py-2.5 pr-4 text-sm text-rufo-text-muted">{cow.breed || "-"}</td>
                       <td className="py-2.5 text-sm text-rufo-text-muted">{cow.birthDate ?? "-"}</td>
@@ -242,6 +294,30 @@ export function CowsPanel({ farmName, herd, cows, isLoadingCows, onAddCowAction,
           )}
         </div>
       </Card>
+
+      {selectedCow && (
+        <CowDetail
+          cow={selectedCow}
+          onCloseAction={() => setSelectedCow(null)}
+          isDeleting={isDeletingCow}
+          onEditAction={
+            onEditCowAction
+              ? () => {
+                  onEditCowAction(selectedCow);
+                  setSelectedCow(null);
+                }
+              : undefined
+          }
+          onDeleteAction={
+            onDeleteCowAction
+              ? () => {
+                  onDeleteCowAction(selectedCow);
+                  setSelectedCow(null);
+                }
+              : undefined
+          }
+        />
+      )}
     </>
   );
 }

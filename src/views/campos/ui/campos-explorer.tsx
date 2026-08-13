@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { useFarms, useFarmMutations, FarmForm, type Farm } from "@/entities/farm";
 import { useHerds, useHerdMutations, HerdForm, type Herd } from "@/entities/herd";
-import { useCows, useCowMutations, CowForm } from "@/entities/cow";
+import { useCows, useCowMutations, CowForm, type Cow } from "@/entities/cow";
 import { AnimatedStep, Button, Card, Modal } from "@/shared/ui";
 import { useFarmCounts } from "../model/use-farm-counts";
 import { useCamposNavigation } from "../model/use-campos-navigation";
@@ -59,11 +59,15 @@ export function CamposExplorer() {
   const { cows, isLoading: isLoadingCows } = useCows(nav.selectedFarmId);
   const {
     createCow,
+    updateCow,
+    deactivateCow,
     error: cowError,
     clearError: clearCowError,
     isSaving: isSavingCow,
+    isDeactivating: isDeletingCow,
   } = useCowMutations(nav.selectedFarmId);
   const [isCowFormOpen, setIsCowFormOpen] = useState(false);
+  const [editingCow, setEditingCow] = useState<Cow | null>(null);
 
   const herdCows = nav.selectedHerdId !== null ? cows.filter((cow) => cow.herdId === nav.selectedHerdId) : [];
   const cowFormHerds = selectedHerd ? [selectedHerd, ...herds.filter((herd) => herd.id !== selectedHerd.id)] : herds;
@@ -111,6 +115,18 @@ export function CamposExplorer() {
   async function handleCreateCow(data: Parameters<typeof createCow>[0]) {
     await createCow(data);
     setIsCowFormOpen(false);
+  }
+
+  async function handleUpdateCow(data: Parameters<typeof createCow>[0]) {
+    if (!editingCow) return;
+    await updateCow(editingCow.id, data);
+    setEditingCow(null);
+  }
+
+  async function handleDeleteCow(cow: Cow) {
+    const label = cow.visualTag || cow.rfidTag || `#${cow.id}`;
+    if (!window.confirm(`Dar de baja el animal "${label}"?`)) return;
+    await deactivateCow(cow.id);
   }
 
   function selectFarm(farm: Farm) {
@@ -263,6 +279,9 @@ export function CamposExplorer() {
                   isLoadingCows={isLoadingCows}
                   onAddCowAction={() => setIsCowFormOpen(true)}
                   onBackToHerdsAction={nav.backToHerds}
+                  onEditCowAction={setEditingCow}
+                  onDeleteCowAction={handleDeleteCow}
+                  isDeletingCow={isDeletingCow}
                 />
               )}
             </AnimatedStep>
@@ -306,6 +325,9 @@ export function CamposExplorer() {
                 isLoadingCows={isLoadingCows}
                 onAddCowAction={() => setIsCowFormOpen(true)}
                 onBackToHerdsAction={nav.backToHerds}
+                onEditCowAction={setEditingCow}
+                onDeleteCowAction={handleDeleteCow}
+                isDeletingCow={isDeletingCow}
               />
             ) : selectedFarm ? (
               <HerdsPanel
@@ -428,6 +450,28 @@ export function CamposExplorer() {
             onSubmitAction={handleCreateCow}
             onCancelAction={() => {
               setIsCowFormOpen(false);
+              clearCowError();
+            }}
+          />
+        </Modal>
+      )}
+
+      {editingCow && (
+        <Modal
+          title="Editar animal"
+          onCloseAction={() => {
+            setEditingCow(null);
+            clearCowError();
+          }}
+        >
+          <CowForm
+            herds={cowFormHerds}
+            initialCow={editingCow}
+            isSaving={isSavingCow}
+            error={cowError}
+            onSubmitAction={handleUpdateCow}
+            onCancelAction={() => {
+              setEditingCow(null);
               clearCowError();
             }}
           />

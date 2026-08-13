@@ -1,14 +1,14 @@
 "use client"
 
 // views/prerregistro/ui/prerregistro-page.tsx
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/shared/session";
 import { useCurrentUser } from "@/entities/user";
 import { AppHeader } from "@/widgets/app-header";
-import { usePrerregistros } from "@/entities/prerregistro";
+import { usePrerregistros, serializePrerregistros } from "@/entities/prerregistro";
 import { Button, Card, Input } from "@/shared/ui";
-import { ScanIcon, TrashIcon } from "./icons";
+import { ClipboardIcon, DownloadIcon, ScanIcon, TrashIcon, UploadIcon } from "./icons";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
@@ -16,16 +16,17 @@ function formatTime(iso: string) {
 
 export function PrerregistroPage() {
   const router = useRouter();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, hasHydrated } = useSession();
   const { user, isLoading } = useCurrentUser();
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!isAuthenticated) {
       router.replace("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated || isLoading || !user) {
+  if (!hasHydrated || !isAuthenticated || isLoading || !user) {
     return <div className="flex flex-1 items-center justify-center text-sm text-rufo-text-muted">Cargando...</div>;
   }
 
@@ -42,11 +43,14 @@ export function PrerregistroPage() {
 // modulo local: empareja caravana visual con numero de SENASA leido por lector RFID.
 // no pega a la api, todo vive en localStorage del navegador.
 export function PrerregistroExplorer() {
-  const { items, addPair, removePair, clearAll } = usePrerregistros();
+  const { items, addPair, removePair, clearAll, importFromJson } = usePrerregistros();
   const [caravana, setCaravana] = useState("");
   const [senasa, setSenasa] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [importFeedback, setImportFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [justCopied, setJustCopied] = useState(false);
   const senasaRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -65,6 +69,49 @@ export function PrerregistroExplorer() {
     if (items.length === 0) return;
     if (!window.confirm(`Vaciar los ${items.length} pares emparejados?`)) return;
     clearAll();
+    setImportFeedback(null);
+  }
+
+  function handleExport() {
+    const blob = new Blob([serializePrerregistros(items)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `prerregistro-caravanas-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(serializePrerregistros(items));
+      setJustCopied(true);
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch {
+      setImportFeedback({ type: "error", message: "No se pudo copiar al portapapeles." });
+    }
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const text = await file.text();
+    const result = importFromJson(text);
+
+    if (result.error) {
+      setImportFeedback({ type: "error", message: result.error });
+      return;
+    }
+
+    const parts = [`${result.added} ${result.added === 1 ? "registro importado" : "registros importados"}`];
+    if (result.skipped > 0) parts.push(`${result.skipped} omitidos por duplicados o invalidos`);
+    setImportFeedback({ type: "success", message: parts.join(", ") + "." });
   }
 
   return (
@@ -108,20 +155,61 @@ export function PrerregistroExplorer() {
         </form>
       </Card>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-medium uppercase tracking-wide text-rufo-text-muted">
           {items.length} {items.length === 1 ? "par emparejado" : "pares emparejados"}
         </p>
-        {items.length > 0 && (
+        <div className="flex items-center gap-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <button
             type="button"
-            onClick={handleClearAll}
-            className="text-xs font-medium text-red-500 hover:underline"
+            onClick={handleImportClick}
+            className="flex items-center gap-1.5 text-xs font-medium text-rufo-primary hover:underline"
           >
-            Vaciar lista
+            <UploadIcon className="h-3.5 w-3.5" />
+            Importar JSON
           </button>
-        )}
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={items.length === 0}
+            className="flex items-center gap-1.5 text-xs font-medium text-rufo-primary hover:underline disabled:cursor-not-allowed disabled:text-rufo-text-muted disabled:no-underline"
+          >
+            <DownloadIcon className="h-3.5 w-3.5" />
+            Exportar JSON
+          </button>
+          <button
+            type="button"
+            onClick={handleCopy}
+            disabled={items.length === 0}
+            className="flex items-center gap-1.5 text-xs font-medium text-rufo-primary hover:underline disabled:cursor-not-allowed disabled:text-rufo-text-muted disabled:no-underline"
+          >
+            <ClipboardIcon className="h-3.5 w-3.5" />
+            {justCopied ? "Copiado" : "Copiar JSON"}
+          </button>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-xs font-medium text-red-500 hover:underline"
+            >
+              Vaciar lista
+            </button>
+          )}
+        </div>
       </div>
+
+      {importFeedback && (
+        <p className={`mt-2 text-xs ${importFeedback.type === "error" ? "text-red-500" : "text-rufo-text-muted"}`}>
+          {importFeedback.message}
+        </p>
+      )}
 
       {items.length === 0 ? (
         <Card className="mt-3 !p-0">

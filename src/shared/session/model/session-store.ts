@@ -17,6 +17,7 @@ export const getSessionStore = create<SessionState>()(
     (set) => ({
       ...INITIAL_STATE,
       isAuthenticated: false,
+      hasHydrated: false,
       setSession: (session) => set({ ...session, isAuthenticated: !!session.accessToken }),
       clearSession: () => set({ ...INITIAL_STATE, isAuthenticated: false }),
     }),
@@ -28,6 +29,22 @@ export const getSessionStore = create<SessionState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),
+      // isAuthenticated no esta en partialize (queda afuera del snapshot persistido), asi que
+      // sin recalcularlo aca el merge de rehidratacion lo deja en su default (false) aunque
+      // accessToken si se restaure. `merge` es una funcion pura (no una funcion que capture
+      // `getSessionStore` por closure): la rehidratacion de un sessionStorage vacio corre en
+      // forma sincronica dentro del propio create(), antes de que termine de asignarse el
+      // export getSessionStore, asi que referenciarlo desde aca (como hace onRehydrateStorage)
+      // revienta con un ReferenceError de TDZ y la hidratacion nunca termina (bug del F5).
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<Session> | undefined;
+        return {
+          ...currentState,
+          ...persisted,
+          isAuthenticated: !!persisted?.accessToken,
+          hasHydrated: true,
+        };
+      },
     }
   )
 );
@@ -37,5 +54,6 @@ export const useSession = () =>
     useShallow((state) => ({
       user: state.user,
       isAuthenticated: state.isAuthenticated,
+      hasHydrated: state.hasHydrated,
     }))
   );

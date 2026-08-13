@@ -12,6 +12,11 @@ export async function createCow(farmId: number, data: CowRequest): Promise<Cow> 
   return response.data;
 }
 
+export async function updateCow(id: number, data: CowRequest): Promise<Cow> {
+  const response = await httpClient.patch<Cow>(`/api/cows/${id}`, data);
+  return response.data;
+}
+
 export async function deactivateCow(id: number): Promise<void> {
   await httpClient.delete(`/api/cows/${id}`);
 }

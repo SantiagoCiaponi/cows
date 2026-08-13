@@ -6,11 +6,12 @@ import { useSession } from "@/shared/session";
 
 export default function Root() {
   const router = useRouter();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, hasHydrated } = useSession();
 
   useEffect(() => {
+    if (!hasHydrated) return;
     router.replace(isAuthenticated ? "/home" : "/login");
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
   return null;
 }

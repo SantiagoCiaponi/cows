@@ -18,6 +18,7 @@ export interface Session {
 
 export interface SessionState extends Session {
   isAuthenticated: boolean;
+  hasHydrated: boolean;
   setSession: (session: Session) => void;
   clearSession: () => void;
 }

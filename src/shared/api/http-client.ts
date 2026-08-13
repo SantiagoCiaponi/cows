@@ -10,7 +10,24 @@ export const httpClient = axios.create({ baseURL });
 // si el propio refresh devuelve 401 (evita que el interceptor de respuesta se reintente a si mismo)
 const refreshClient = axios.create({ baseURL });
 
-httpClient.interceptors.request.use((config) => {
+// el store de sesion hidrata sessionStorage de forma asincrona; sin esperar esto,
+// un request disparado en el primer render (ej: queries sin gate de auth) sale sin
+// token, el backend responde 401 y el interceptor de abajo lo interpreta como sesion
+// vencida y redirige a /login aunque la sesion siga guardada (bug del F5).
+function waitForHydration(): Promise<void> {
+  if (getSessionStore.getState().hasHydrated) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsubscribe = getSessionStore.subscribe((state) => {
+      if (state.hasHydrated) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+}
+
+httpClient.interceptors.request.use(async (config) => {
+  await waitForHydration();
   const { accessToken } = getSessionStore.getState();
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;

@@ -30,18 +30,19 @@ function getFormattedDate() {
 
 export function HomePage() {
   const router = useRouter();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, hasHydrated } = useSession();
   const { user, isLoading } = useCurrentUser();
   const { farmsCount, herdsCount, cowsCount, isLoading: isLoadingStats } = useDashboardStats();
 
   // sin sesion valida no hay nada que mostrar aca; se corta el flujo en vez de renderizar en falso
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!isAuthenticated) {
       router.replace("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated || isLoading || !user) {
+  if (!hasHydrated || !isAuthenticated || isLoading || !user) {
     return <div className="flex flex-1 items-center justify-center text-sm text-rufo-text-muted">Cargando...</div>;
   }
 

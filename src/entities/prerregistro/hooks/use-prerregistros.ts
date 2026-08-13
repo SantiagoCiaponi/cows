@@ -3,6 +3,7 @@
 // entities/prerregistro/hooks/use-prerregistros.ts
 import { useSyncExternalStore } from "react";
 import { loadPrerregistros, savePrerregistros } from "../lib/storage";
+import { parsePrerregistrosJson } from "../lib/import-export";
 import type { Prerregistro } from "../model/types";
 
 type Listener = () => void;
@@ -64,5 +65,34 @@ export function usePrerregistros() {
     setItems(() => []);
   }
 
-  return { items, addPair, removePair, clearAll };
+  function importFromJson(raw: string): { added: number; skipped: number; error: string | null } {
+    let incoming: Prerregistro[];
+    try {
+      incoming = parsePrerregistrosJson(raw);
+    } catch (err) {
+      return { added: 0, skipped: 0, error: err instanceof Error ? err.message : "No se pudo leer el archivo." };
+    }
+
+    let added = 0;
+    let skipped = 0;
+    setItems((prev) => {
+      const result = [...prev];
+      for (const entry of incoming) {
+        const alreadyExists = result.some(
+          (item) => item.caravana === entry.caravana || item.senasa === entry.senasa
+        );
+        if (alreadyExists) {
+          skipped++;
+          continue;
+        }
+        result.unshift(entry);
+        added++;
+      }
+      return result;
+    });
+
+    return { added, skipped, error: null };
+  }
+
+  return { items, addPair, removePair, clearAll, importFromJson };
 }
