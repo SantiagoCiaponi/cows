@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --rufo-primary: #2f6d4f;
+  --rufo-primary-hover: #25583f;
+  --rufo-primary-pressed: #1d4632;
+  --rufo-primary-dark: #123726;
+  --rufo-primary-dark-hover: #16412c;
+  --rufo-light-green: #7cd9a4;
+  --rufo-accent: #e0a44e;
+  --rufo-surface: #ffffff;
+  --rufo-background: #e9ece8;
+  --rufo-topbar: #f2f5f1;
+  --rufo-footer: #f7faf6;
+  --rufo-border: #c9d3c9;
+  --rufo-divider: #e3e9e3;
+  --rufo-border-device: #b6c2b7;
+  --rufo-border-dashed: #c3cec5;
+  --rufo-text: #0e1a13;
+  --rufo-text-muted: #4d5a51;
+  --rufo-icon-muted: #7b8a7f;
+  --rufo-destructive: #b04a4a;
+  --rufo-destructive-hover-bg: #f6e9e9;
+  --rufo-destructive-on-dark: #f0b4b4;
+}
+
+@theme inline {
+  --color-rufo-primary: var(--rufo-primary);
+  --color-rufo-primary-hover: var(--rufo-primary-hover);
+  --color-rufo-primary-pressed: var(--rufo-primary-pressed);
+  --color-rufo-primary-dark: var(--rufo-primary-dark);
+  --color-rufo-primary-dark-hover: var(--rufo-primary-dark-hover);
+  --color-rufo-light-green: var(--rufo-light-green);
+  --color-rufo-accent: var(--rufo-accent);
+  --color-rufo-surface: var(--rufo-surface);
+  --color-rufo-background: var(--rufo-background);
+  --color-rufo-topbar: var(--rufo-topbar);
+  --color-rufo-footer: var(--rufo-footer);
+  --color-rufo-border: var(--rufo-border);
+  --color-rufo-divider: var(--rufo-divider);
+  --color-rufo-border-device: var(--rufo-border-device);
+  --color-rufo-border-dashed: var(--rufo-border-dashed);
+  --color-rufo-text: var(--rufo-text);
+  --color-rufo-text-muted: var(--rufo-text-muted);
+  --color-rufo-icon-muted: var(--rufo-icon-muted);
+  --color-rufo-destructive: var(--rufo-destructive);
+  --color-rufo-destructive-hover-bg: var(--rufo-destructive-hover-bg);
+  --color-rufo-destructive-on-dark: var(--rufo-destructive-on-dark);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--rufo-background);
+  color: var(--rufo-text);
+}
