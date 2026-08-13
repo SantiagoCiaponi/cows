@@ -46,7 +46,7 @@ export function PrerregistroExplorer() {
   const [caravana, setCaravana] = useState("");
   const [senasa, setSenasa] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const caravanaRef = useRef<HTMLInputElement>(null);
+  const senasaRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -58,7 +58,7 @@ export function PrerregistroExplorer() {
     setError(null);
     setCaravana("");
     setSenasa("");
-    caravanaRef.current?.focus();
+    senasaRef.current?.focus();
   }
 
   function handleClearAll() {
@@ -79,29 +79,29 @@ export function PrerregistroExplorer() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              ref={caravanaRef}
-              label="Numero de caravana"
-              name="caravana"
-              autoFocus
-              autoComplete="off"
-              placeholder="Ej: 1234"
-              value={caravana}
-              onChange={(e) => setCaravana(e.target.value)}
-            />
-            <Input
+              ref={senasaRef}
               label="Numero de SENASA (lector)"
               name="senasa"
+              autoFocus
               autoComplete="off"
               placeholder="Escane&aacute; con el lector"
               value={senasa}
               onChange={(e) => setSenasa(e.target.value)}
+            />
+            <Input
+              label="Numero de caravana"
+              name="caravana"
+              autoComplete="off"
+              placeholder="Ej: 1234"
+              value={caravana}
+              onChange={(e) => setCaravana(e.target.value)}
             />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex items-center justify-between gap-3">
             <p className="flex items-center gap-1.5 text-xs text-rufo-text-muted">
               <ScanIcon className="h-3.5 w-3.5" />
-              Escane&aacute; o apret&aacute; Enter en el campo de SENASA para agregar el par.
+              Escane&aacute; con el lector, complet&aacute; la caravana y apret&aacute; Enter para agregar el par.
             </p>
             <Button type="submit">Emparejar</Button>
           </div>
@@ -134,14 +134,14 @@ export function PrerregistroExplorer() {
               key={item.id}
               className="flex items-center justify-between rounded-lg border border-rufo-border-device bg-rufo-surface px-4 py-3"
             >
-              <div className="flex items-center gap-6">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-rufo-text-muted">Caravana</p>
-                  <p className="text-sm font-semibold text-rufo-text">{item.caravana}</p>
-                </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:gap-x-6">
                 <div>
                   <p className="text-[11px] uppercase tracking-wide text-rufo-text-muted">SENASA</p>
                   <p className="text-sm font-semibold text-rufo-text">{item.senasa}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-rufo-text-muted">Caravana</p>
+                  <p className="text-sm font-semibold text-rufo-text">{item.caravana}</p>
                 </div>
                 <p className="text-xs text-rufo-text-muted">{formatTime(item.createdAt)}</p>
               </div>

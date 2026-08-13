@@ -4,6 +4,11 @@ import { Card } from "@/shared/ui";
 
 const ACTIONS = [
   {
+    title: "Prerregistro de caravanas",
+    description: "Emparejá caravana y SENASA con el lector.",
+    href: "/prerregistro",
+  },
+  {
     title: "Nuevo animal",
     description: "Alta con caravana y datos basicos.",
     href: "/campos",
@@ -26,7 +31,7 @@ export function QuickActions() {
       <h3 className="text-xs font-semibold uppercase tracking-wide text-rufo-text-muted">
         Accesos rapidos
       </h3>
-      <div className="mt-3 grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {ACTIONS.map((action) => (
           <Link key={action.title} href={action.href} className="block">
             <Card className="flex h-full items-center justify-between gap-4 transition-shadow hover:shadow-md">
